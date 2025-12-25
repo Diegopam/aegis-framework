@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciador de Arquivos</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="app">
+        <!-- Barra de Título (Frameless) -->
+        <header class="titlebar" id="titlebar">
+            <div class="titlebar-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="#FFB900">
+                    <path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" />
+                </svg>
+            </div>
+            <span class="titlebar-title">Gerenciador de Arquivos</span>
+            <div class="titlebar-controls">
+                <button class="titlebar-btn" id="btn-minimize" title="Minimizar">─</button>
+                <button class="titlebar-btn" id="btn-maximize" title="Maximizar">□</button>
+                <button class="titlebar-btn btn-close" id="btn-close" title="Fechar">✕</button>
+            </div>
+        </header>
+
+        <!-- Ribbon/Toolbar -->
+        <nav class="ribbon">
+            <div class="ribbon-tabs">
+                <button class="ribbon-tab active">Arquivo</button>
+                <button class="ribbon-tab">Início</button>
+                <button class="ribbon-tab">Compartilhar</button>
+                <button class="ribbon-tab">Exibir</button>
+            </div>
+            <div class="ribbon-content">
+                <div class="ribbon-group">
+                    <button class="ribbon-btn" id="btn-new-folder">
+                        <span class="ribbon-icon">📁</span>
+                        <span>Nova Pasta</span>
+                    </button>
+                    <button class="ribbon-btn" id="btn-new-file">
+                        <span class="ribbon-icon">📄</span>
+                        <span>Novo Arquivo</span>
+                    </button>
+                </div>
+                <div class="ribbon-separator"></div>
+                <div class="ribbon-group">
+                    <button class="ribbon-btn" id="btn-copy">
+                        <span class="ribbon-icon">📋</span>
+                        <span>Copiar</span>
+                    </button>
+                    <button class="ribbon-btn" id="btn-cut">
+                        <span class="ribbon-icon">✂️</span>
+                        <span>Recortar</span>
+                    </button>
+                    <button class="ribbon-btn" id="btn-paste">
+                        <span class="ribbon-icon">📌</span>
+                        <span>Colar</span>
+                    </button>
+                    <button class="ribbon-btn" id="btn-delete">
+                        <span class="ribbon-icon">🗑️</span>
+                        <span>Excluir</span>
+                    </button>
+                </div>
+                <div class="ribbon-separator"></div>
+                <div class="ribbon-group">
+                    <button class="ribbon-btn" id="btn-rename">
+                        <span class="ribbon-icon">✏️</span>
+                        <span>Renomear</span>
+                    </button>
+                    <button class="ribbon-btn" id="btn-properties">
+                        <span class="ribbon-icon">ℹ️</span>
+                        <span>Propriedades</span>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Barra de Navegação -->
+        <div class="navigation-bar">
+            <button class="nav-btn" id="btn-back" title="Voltar">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+                </svg>
+            </button>
+            <button class="nav-btn" id="btn-forward" title="Avançar">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
+                </svg>
+            </button>
+            <button class="nav-btn" id="btn-up" title="Pasta Superior">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z" />
+                </svg>
+            </button>
+            <div class="address-bar" id="address-bar">
+                <span class="address-icon">📁</span>
+                <input type="text" id="path-input" value="" readonly>
+            </div>
+            <div class="search-bar">
+                <input type="text" id="search-input" placeholder="Pesquisar">
+                <span class="search-icon">🔍</span>
+            </div>
+        </div>
+
+        <!-- Conteúdo Principal -->
+        <div class="main-content">
+            <!-- Painel Lateral -->
+            <aside class="sidebar">
+                <div class="sidebar-section">
+                    <h4>Acesso Rápido</h4>
+                    <ul class="sidebar-list">
+                        <li class="sidebar-item" data-path="$HOME/Desktop">
+                            <span class="item-icon">🖥️</span>
+                            <span>Área de Trabalho</span>
+                        </li>
+                        <li class="sidebar-item" data-path="$HOME/Downloads">
+                            <span class="item-icon">⬇️</span>
+                            <span>Downloads</span>
+                        </li>
+                        <li class="sidebar-item" data-path="$HOME/Documents">
+                            <span class="item-icon">📄</span>
+                            <span>Documentos</span>
+                        </li>
+                        <li class="sidebar-item" data-path="$HOME/Pictures">
+                            <span class="item-icon">🖼️</span>
+                            <span>Imagens</span>
+                        </li>
+                        <li class="sidebar-item" data-path="$HOME/Music">
+                            <span class="item-icon">🎵</span>
+                            <span>Músicas</span>
+                        </li>
+                        <li class="sidebar-item" data-path="$HOME/Videos">
+                            <span class="item-icon">🎬</span>
+                            <span>Vídeos</span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="sidebar-section">
+                    <h4>Este Computador</h4>
+                    <ul class="sidebar-list">
+                        <li class="sidebar-item" data-path="$HOME">
+                            <span class="item-icon">🏠</span>
+                            <span>Home</span>
+                        </li>
+                        <li class="sidebar-item" data-path="/">
+                            <span class="item-icon">💾</span>
+                            <span>Sistema (/)</span>
+                        </li>
+                    </ul>
+                </div>
+            </aside>
+
+            <!-- Área de Arquivos -->
+            <main class="file-area">
+                <div class="file-grid" id="file-grid">
+                    <!-- Files will be loaded here -->
+                </div>
+            </main>
+        </div>
+
+        <!-- Barra de Status -->
+        <footer class="statusbar">
+            <span id="item-count">0 itens</span>
+            <span id="selected-count"></span>
+            <div class="view-toggle">
+                <button class="view-btn active" id="btn-grid-view" title="Grade">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                        <path
+                            d="M4 4h4v4H4V4zm6 0h4v4h-4V4zm6 0h4v4h-4V4zM4 10h4v4H4v-4zm6 0h4v4h-4v-4zm6 0h4v4h-4v-4zM4 16h4v4H4v-4zm6 0h4v4h-4v-4zm6 0h4v4h-4v-4z" />
+                    </svg>
+                </button>
+                <button class="view-btn" id="btn-list-view" title="Lista">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h16v2H4v-2z" />
+                    </svg>
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Menu de Contexto -->
+    <div class="context-menu" id="context-menu">
+        <div class="context-item" data-action="open">
+            <span class="context-icon">📂</span>
+            <span>Abrir</span>
+        </div>
+        <div class="context-separator"></div>
+        <div class="context-item" data-action="copy">
+            <span class="context-icon">📋</span>
+            <span>Copiar</span>
+            <span class="context-shortcut">Ctrl+C</span>
+        </div>
+        <div class="context-item" data-action="cut">
+            <span class="context-icon">✂️</span>
+            <span>Recortar</span>
+            <span class="context-shortcut">Ctrl+X</span>
+        </div>
+        <div class="context-item" data-action="paste">
+            <span class="context-icon">📌</span>
+            <span>Colar</span>
+            <span class="context-shortcut">Ctrl+V</span>
+        </div>
+        <div class="context-separator"></div>
+        <div class="context-item" data-action="rename">
+            <span class="context-icon">✏️</span>
+            <span>Renomear</span>
+            <span class="context-shortcut">F2</span>
+        </div>
+        <div class="context-item" data-action="delete">
+            <span class="context-icon">🗑️</span>
+            <span>Excluir</span>
+            <span class="context-shortcut">Del</span>
+        </div>
+        <div class="context-separator"></div>
+        <div class="context-item" data-action="properties">
+            <span class="context-icon">ℹ️</span>
+            <span>Propriedades</span>
+        </div>
+    </div>
+
+    <!-- Modal Propriedades -->
+    <div class="modal" id="properties-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">Propriedades</span>
+                <button class="modal-close" id="close-properties">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="property-icon" id="prop-icon">📁</div>
+                <div class="property-row">
+                    <span class="property-label">Nome:</span>
+                    <span class="property-value" id="prop-name">-</span>
+                </div>
+                <div class="property-row">
+                    <span class="property-label">Tipo:</span>
+                    <span class="property-value" id="prop-type">-</span>
+                </div>
+                <div class="property-row">
+                    <span class="property-label">Localização:</span>
+                    <span class="property-value" id="prop-location">-</span>
+                </div>
+                <div class="property-row">
+                    <span class="property-label">Tamanho:</span>
+                    <span class="property-value" id="prop-size">-</span>
+                </div>
+                <div class="property-row">
+                    <span class="property-label">Modificado:</span>
+                    <span class="property-value" id="prop-modified">-</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn" id="btn-ok-properties">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resize Handles for Frameless Window -->
+    <div class="resize-handle resize-n"></div>
+    <div class="resize-handle resize-s"></div>
+    <div class="resize-handle resize-e"></div>
+    <div class="resize-handle resize-w"></div>
+    <div class="resize-handle resize-ne"></div>
+    <div class="resize-handle resize-nw"></div>
+    <div class="resize-handle resize-se"></div>
+    <div class="resize-handle resize-sw"></div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>

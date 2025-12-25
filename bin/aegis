@@ -1,0 +1,81 @@
+#!/usr/bin/env node
+/**
+ * Aegis CLI - npm wrapper
+ * 
+ * This wrapper calls the Python CLI directly, ensuring proper
+ * PYTHONPATH configuration for the installed package.
+ */
+
+const { spawn } = require('child_process');
+const path = require('path');
+const fs = require('fs');
+
+// Get the directory where aegis is installed
+const aegisDir = path.join(__dirname, '..');
+const cliPath = path.join(aegisDir, 'aegis-cli.py');
+
+// Check if Python is available
+function getPythonCommand() {
+    const pythons = ['python3', 'python'];
+    for (const cmd of pythons) {
+        try {
+            require('child_process').execSync(`${cmd} --version`, { stdio: 'ignore' });
+            return cmd;
+        } catch (e) {
+            continue;
+        }
+    }
+    return null;
+}
+
+// Check for system dependencies
+function checkDependencies() {
+    const python = getPythonCommand();
+    if (!python) {
+        console.error('\x1b[31m❌ Python 3 not found!\x1b[0m');
+        console.error('   Please install Python 3: sudo apt install python3');
+        process.exit(1);
+    }
+    
+    // Check for GTK/WebKit on Linux (only for dev/run commands)
+    const command = process.argv[2];
+    if (['dev', 'run'].includes(command)) {
+        try {
+            require('child_process').execSync(
+                `${python} -c "import gi; gi.require_version('WebKit2', '4.1')"`,
+                { stdio: 'ignore' }
+            );
+        } catch (e) {
+            console.error('\x1b[33m⚠️  WebKit2GTK not found!\x1b[0m');
+            console.error('   Install with: sudo apt install python3-gi gir1.2-webkit2-4.1');
+            console.error('');
+        }
+    }
+    
+    return python;
+}
+
+// Main execution
+const python = checkDependencies();
+
+// Set PYTHONPATH to include aegis modules
+const env = { ...process.env };
+env.PYTHONPATH = aegisDir + (env.PYTHONPATH ? `:${env.PYTHONPATH}` : '');
+
+// Forward arguments to Python CLI
+const args = [cliPath, ...process.argv.slice(2)];
+
+const child = spawn(python, args, {
+    stdio: 'inherit',
+    env: env,
+    cwd: process.cwd()
+});
+
+child.on('error', (err) => {
+    console.error(`\x1b[31m❌ Failed to start Aegis: ${err.message}\x1b[0m`);
+    process.exit(1);
+});
+
+child.on('close', (code) => {
+    process.exit(code || 0);
+});

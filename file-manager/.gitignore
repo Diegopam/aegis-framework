@@ -1,0 +1,16 @@
+# Aegis
+dist/
+*.AppImage
+*.AppDir/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Node (if using npm for frontend)
+node_modules/
+
+# IDE
+.vscode/
+.idea/

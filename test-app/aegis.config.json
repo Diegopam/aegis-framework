@@ -1,0 +1,15 @@
+{
+  "name": "test-app",
+  "title": "Test App",
+  "version": "1.0.0",
+  "main": "src/index.html",
+  "preload": "src/preload.js",
+  "width": 1200,
+  "height": 800,
+  "resizable": true,
+  "frame": true,
+  "devTools": true,
+  "contextMenu": true,
+  "icon": "assets/icon.png",
+  "description": "An Aegis application"
+}

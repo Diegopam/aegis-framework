@@ -1,0 +1,15 @@
+{
+  "name": "file-manager",
+  "title": "File Manager",
+  "version": "1.0.0",
+  "main": "src/index.html",
+  "preload": "src/preload.js",
+  "width": 1200,
+  "height": 700,
+  "resizable": true,
+  "frame": false,
+  "devTools": true,
+  "contextMenu": false,
+  "icon": "assets/icon.png",
+  "description": "Windows 10 Style File Manager built with Aegis"
+}

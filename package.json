@@ -1,0 +1,51 @@
+{
+    "name": "aegis-framework",
+    "version": "0.1.0",
+    "description": "Lightweight AppImage framework using WebKit2GTK and Python - An alternative to Electron that creates ~200KB apps instead of 150MB!",
+    "keywords": [
+        "appimage",
+        "electron-alternative",
+        "webkit",
+        "webkit2gtk",
+        "gtk",
+        "python",
+        "linux",
+        "desktop",
+        "desktop-app",
+        "framework",
+        "lightweight"
+    ],
+    "author": "Diego",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/your-username/aegis-framework"
+    },
+    "homepage": "https://github.com/your-username/aegis-framework#readme",
+    "bugs": {
+        "url": "https://github.com/your-username/aegis-framework/issues"
+    },
+    "bin": {
+        "aegis": "./bin/aegis"
+    },
+    "files": [
+        "bin/",
+        "aegis/",
+        "aegis-cli.py",
+        "README.md",
+        "LICENSE"
+    ],
+    "scripts": {
+        "test": "echo 'Check dependencies...' && python3 --version",
+        "postinstall": "echo '⚡ Aegis installed! Run: aegis init my-app'"
+    },
+    "os": [
+        "linux"
+    ],
+    "cpu": [
+        "x64"
+    ],
+    "engines": {
+        "node": ">=14"
+    }
+}
