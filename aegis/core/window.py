@@ -767,10 +767,14 @@ class AegisWindow(Gtk.Window):
                 }
                 GLib.idle_add(self._send_response, callback_id, result)
             else:
-                GLib.idle_add(self._send_error, callback_id, f"aria2c exited with code {process.returncode}")
+                # aria2c failed (e.g., snap sandbox restrictions) - fallback to urllib
+                print(f"[Aegis] aria2c failed (code {process.returncode}), falling back to urllib")
+                self._download_with_urllib(url, dest, callback_id)
                 
         except Exception as e:
-            GLib.idle_add(self._send_error, callback_id, str(e))
+            # On any error, fallback to urllib
+            print(f"[Aegis] aria2c error: {e}, falling back to urllib")
+            self._download_with_urllib(url, dest, callback_id)
     
     def _download_with_urllib(self, url, dest, callback_id):
         """Fallback download using urllib (single connection)"""
