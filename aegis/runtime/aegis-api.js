@@ -14,6 +14,7 @@
 
     let callbackId = 0;
     const pendingCallbacks = new Map();
+    const progressCallbacks = new Map();  // For async progress updates
 
     /**
      * Resolve a callback from Python
@@ -22,11 +23,22 @@
         const callback = pendingCallbacks.get(response.callbackId);
         if (callback) {
             pendingCallbacks.delete(response.callbackId);
+            progressCallbacks.delete(response.callbackId);  // Cleanup progress callback
             if (response.success) {
                 callback.resolve(response.data);
             } else {
                 callback.reject(new Error(response.error));
             }
+        }
+    };
+
+    /**
+     * Handle progress updates from Python (for async operations)
+     */
+    window.__aegisProgress = function (response) {
+        const callback = progressCallbacks.get(response.callbackId);
+        if (callback) {
+            callback(response.data);
         }
     };
 
@@ -76,6 +88,41 @@
             }
             return invoke(action, payload);
         };
+    }
+
+    /**
+     * Invoke an async action with progress callback
+     * @param {string} action - The action name
+     * @param {object} payload - The payload
+     * @param {function} onProgress - Progress callback function
+     */
+    function invokeWithProgress(action, payload, onProgress) {
+        return new Promise((resolve, reject) => {
+            if (!isAllowed(action)) {
+                reject(new Error(`API '${action}' is not allowed by preload`));
+                return;
+            }
+
+            const id = ++callbackId;
+            pendingCallbacks.set(id, { resolve, reject });
+
+            // Register progress callback if provided
+            if (onProgress && typeof onProgress === 'function') {
+                progressCallbacks.set(id, onProgress);
+            }
+
+            const message = JSON.stringify({
+                action: action,
+                payload: payload,
+                callbackId: id
+            });
+
+            if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.aegis) {
+                window.webkit.messageHandlers.aegis.postMessage(message);
+            } else {
+                reject(new Error('Aegis bridge not available'));
+            }
+        });
     }
 
     // ==================== Public Aegis API ====================
@@ -169,6 +216,74 @@
          * });
          */
         copy: guardedInvoke('copy'),
+
+        // ==================== Async Operations with Progress ====================
+
+        /**
+         * Run command asynchronously with streaming output
+         * 
+         * @param {object} options - Command options
+         * @param {string} options.sh - Shell command to execute
+         * @param {function} onProgress - Progress callback, called with each output line
+         * @returns {Promise<{output: string, exitCode: number}>}
+         * 
+         * @example
+         * const result = await Aegis.runAsync(
+         *     { sh: 'apt install htop' },
+         *     (progress) => {
+         *         console.log(progress.line);  // Each line of output
+         *     }
+         * );
+         */
+        runAsync: function (options, onProgress) {
+            return invokeWithProgress('run.async', options, onProgress);
+        },
+
+        /**
+         * Download file with progress updates
+         * 
+         * @param {object} options - Download options
+         * @param {string} options.url - URL to download from
+         * @param {string} options.dest - Destination file path
+         * @param {function} onProgress - Progress callback
+         * @returns {Promise<{success: boolean, path: string, size: number}>}
+         * 
+         * @example
+         * const result = await Aegis.download(
+         *     { 
+         *         url: 'https://example.com/file.zip',
+         *         dest: '/home/user/downloads/file.zip'
+         *     },
+         *     (progress) => {
+         *         progressBar.style.width = progress.percent + '%';
+         *         statusText.textContent = `${progress.downloaded} / ${progress.total}`;
+         *     }
+         * );
+         */
+        download: function (options, onProgress) {
+            return invokeWithProgress('download', options, onProgress);
+        },
+
+        /**
+         * Copy file or directory with progress updates (for large files)
+         * 
+         * @param {object} options - Copy options
+         * @param {string} options.src - Source path
+         * @param {string} options.dest - Destination path
+         * @param {function} onProgress - Progress callback
+         * @returns {Promise<{success: boolean, src: string, dest: string}>}
+         * 
+         * @example
+         * await Aegis.copyAsync(
+         *     { src: '/path/to/large-folder', dest: '/path/to/backup' },
+         *     (progress) => {
+         *         console.log(`${progress.percent.toFixed(1)}% - ${progress.current}`);
+         *     }
+         * );
+         */
+        copyAsync: function (options, onProgress) {
+            return invokeWithProgress('copy.async', options, onProgress);
+        },
 
         /**
          * Move/rename file or directory

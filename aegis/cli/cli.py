@@ -434,47 +434,265 @@ console.log('✅ Preload configured');
         # README
         readme_content = f'''# {project_name}
 
-An application built with [Aegis Framework](https://github.com/your-repo/aegis).
+An application built with [Aegis Framework](https://github.com/Diegopam/aegis-framework) - the lightweight alternative to Electron!
 
-## Getting Started
+## 🚀 Quick Start
 
 ```bash
-# Development mode
+# Development mode (with hot-reload)
 aegis dev
 
-# Build AppImage
+# Run in production mode  
+aegis run
+
+# Build AppImage (~200KB!)
 aegis build
 ```
 
-## Project Structure
+## 📁 Project Structure
 
 ```
 {project_name}/
-├── aegis.config.json    # Project configuration
+├── aegis.config.json    # App configuration (size, title, etc.)
 ├── src/
-│   ├── index.html       # Main HTML
-│   ├── styles.css       # Styles
-│   ├── app.js           # JavaScript
-│   └── preload.js       # Security configuration
+│   ├── index.html       # Main HTML entry point
+│   ├── styles.css       # Your styles
+│   ├── app.js           # Your JavaScript code
+│   └── preload.js       # Security: control which APIs are exposed
 └── assets/
-    └── icon.png         # App icon
+    └── icon.png         # App icon (256x256 recommended)
 ```
 
-## Aegis API
+## 🔌 Aegis API Reference
+
+### File Operations
 
 ```javascript
-// Read files
-const content = await Aegis.read({{ path: '.', file: 'data.txt' }});
+// Read directory contents
+const dir = await Aegis.read({{ path: '/home/user' }});
+console.log(dir.entries);  // [{{ name: 'file.txt', isFile: true, size: 1234 }}, ...]
 
-// Write files
-await Aegis.write({{ path: '.', file: 'output.txt', content: 'Hello!' }});
+// Read file content
+const file = await Aegis.read({{ path: '/home/user', file: 'data.txt' }});
+console.log(file.content);
 
-// Run commands
-const result = await Aegis.run({{ sh: 'ls -la' }});
+// Write file
+await Aegis.write({{
+    path: '/home/user',
+    file: 'output.txt',
+    content: 'Hello, Aegis!'
+}});
 
-// Dialogs
-await Aegis.dialog.message({{ type: 'info', title: 'Hello', message: 'World!' }});
+// Check if file/directory exists
+const info = await Aegis.exists({{ path: '/home/user/file.txt' }});
+if (info.exists && info.isFile) {{
+    console.log('File exists!');
+}}
+
+// Create directory
+await Aegis.mkdir({{ path: '/home/user/new-folder' }});
+
+// Delete file or directory
+await Aegis.remove({{ path: '/home/user/old-file.txt' }});
+await Aegis.remove({{ path: '/home/user/old-folder', recursive: true }});
+
+// Copy file or directory
+await Aegis.copy({{
+    src: '/home/user/file.txt',
+    dest: '/home/user/backup/file.txt'
+}});
+
+// Move/rename file or directory
+await Aegis.move({{
+    src: '/home/user/old-name.txt',
+    dest: '/home/user/new-name.txt'
+}});
 ```
+
+### Execute Commands
+
+```javascript
+// Run shell command
+const result = await Aegis.run({{ sh: 'ls -la' }});
+console.log(result.output);
+console.log(result.exitCode);
+
+// Run Python code
+const pyResult = await Aegis.run({{ py: 'print(2 + 2)' }});
+console.log(pyResult.output);  // "4"
+
+// Run async command with streaming output (no UI freeze!)
+await Aegis.runAsync(
+    {{ sh: 'apt update' }},
+    (progress) => {{
+        console.log(progress.line);  // Each line as it comes
+    }}
+);
+```
+
+### Dialogs
+
+```javascript
+// Info dialog
+await Aegis.dialog.message({{
+    type: 'info',
+    title: 'Success',
+    message: 'Operation completed!'
+}});
+
+// Confirmation dialog
+const confirm = await Aegis.dialog.message({{
+    type: 'question',
+    title: 'Confirm',
+    message: 'Are you sure?',
+    buttons: 'yesno'
+}});
+if (confirm.response) {{
+    // User clicked Yes
+}}
+
+// Open file dialog
+const file = await Aegis.dialog.open({{
+    title: 'Select a file',
+    filters: [{{ name: 'Images', extensions: ['png', 'jpg', 'gif'] }}]
+}});
+console.log(file.path);
+
+// Save file dialog
+const savePath = await Aegis.dialog.save({{
+    title: 'Save as',
+    defaultName: 'document.txt'
+}});
+```
+
+### Download with Progress
+
+```javascript
+// Download file with progress bar
+await Aegis.download(
+    {{
+        url: 'https://example.com/file.zip',
+        dest: '/home/user/downloads/file.zip'
+    }},
+    (progress) => {{
+        const percent = progress.percent.toFixed(1);
+        progressBar.style.width = percent + '%';
+        statusText.textContent = `${{progress.downloaded}} / ${{progress.total}} bytes`;
+    }}
+);
+```
+
+### App Control
+
+```javascript
+// Window controls
+Aegis.app.minimize();
+Aegis.app.maximize();
+Aegis.app.quit();
+
+// Get system paths (localized for your language!)
+const home = await Aegis.app.getPath({{ name: 'home' }});
+const docs = await Aegis.app.getPath({{ name: 'documents' }});  // Returns "Documentos" on pt-BR
+const downloads = await Aegis.app.getPath({{ name: 'downloads' }});
+// Also: desktop, music, pictures, videos
+```
+
+### Window Control (Frameless Windows)
+
+```javascript
+// Make element draggable for window movement
+Aegis.window.moveBar('#titlebar', {{ exclude: '.btn-close' }});
+
+// Setup resize handles
+Aegis.window.resizeHandles({{
+    '.resize-n': 'n',
+    '.resize-s': 's',
+    '.resize-se': 'se',
+    // Options: n, s, e, w, ne, nw, se, sw
+}});
+
+// Get/set window size
+const size = await Aegis.window.getSize();
+await Aegis.window.setSize({{ width: 1024, height: 768 }});
+
+// Get/set window position
+const pos = await Aegis.window.getPosition();
+await Aegis.window.setPosition({{ x: 100, y: 100 }});
+```
+
+## 🔒 Security (preload.js)
+
+Control which APIs your app can access:
+
+```javascript
+// src/preload.js
+Aegis.expose([
+    'read',      // File reading
+    'write',     // File writing
+    'run',       // Command execution
+    'dialog',    // Native dialogs
+    'app',       // App control
+    'window',    // Window control
+    'download',  // Download with progress
+    'exists',    // File existence
+    'mkdir',     // Create directories
+    'remove',    // Delete files
+    'copy',      // Copy files
+    'move'       // Move/rename files
+]);
+
+// For maximum security, only expose what you need!
+// If you omit 'run', the app cannot execute shell commands
+```
+
+## ⚙️ Configuration (aegis.config.json)
+
+```json
+{{
+    "name": "{project_name}",
+    "title": "My Awesome App",
+    "version": "1.0.0",
+    "main": "src/index.html",
+    "preload": "src/preload.js",
+    "width": 1200,
+    "height": 800,
+    "resizable": true,
+    "frame": true,
+    "icon": "assets/icon.png"
+}}
+```
+
+| Option | Description |
+|--------|-------------|
+| `frame` | Set to `false` for frameless window (custom titlebar) |
+| `resizable` | Allow window resizing |
+| `width/height` | Initial window size |
+| `devTools` | Enable right-click → Inspect Element |
+
+## 📦 Building AppImage
+
+```bash
+aegis build
+```
+
+This creates a portable AppImage (~200KB!) in the `dist/` folder.
+
+**Note:** The AppImage requires `python3-gi` and `gir1.2-webkit2-4.1` on the target system.
+
+## 🆚 Why Aegis over Electron?
+
+| Aspect | Electron | Aegis |
+|--------|----------|-------|
+| App Size | ~150 MB | **~200 KB** |
+| Backend | Node.js | Python |
+| Renderer | Chromium (bundled) | WebKit2GTK (system) |
+| RAM Usage | High (~100MB+) | Low (~30MB) |
+| Platform | Cross-platform | Linux |
+
+## 📚 Learn More
+
+- [Aegis GitHub](https://github.com/Diegopam/aegis-framework)
+- [npm Package](https://www.npmjs.com/package/aegis-framework)
 
 ## License
 

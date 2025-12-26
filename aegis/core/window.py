@@ -10,6 +10,9 @@ gi.require_version('WebKit2', '4.1')
 from gi.repository import Gtk, WebKit2, Gdk, GLib
 import json
 import os
+import threading
+import urllib.request
+import shutil
 
 
 class AegisWindow(Gtk.Window):
@@ -114,12 +117,17 @@ class AegisWindow(Gtk.Window):
             
             print(f"[Aegis] Action: {action}, Payload: {payload}")
             
-            # Process action and get result
-            result = self._process_action(action, payload)
+            # Check if this is an async action
+            async_actions = {'run.async', 'download', 'copy.async'}
             
-            # Send response back to JavaScript
-            if callback_id:
-                self._send_response(callback_id, result)
+            if action in async_actions:
+                # Handle in background thread - response sent via callback
+                self._process_async_action(action, payload, callback_id)
+            else:
+                # Sync action - process and respond immediately
+                result = self._process_action(action, payload)
+                if callback_id:
+                    self._send_response(callback_id, result)
                 
         except Exception as e:
             print(f"[Aegis Bridge] Error: {e}")
@@ -596,6 +604,180 @@ class AegisWindow(Gtk.Window):
             None, None
         )
         self.content_manager.add_script(user_script)
+    
+    # ==================== Async Action Handlers ====================
+    
+    def _process_async_action(self, action, payload, callback_id):
+        """Process async actions in background threads"""
+        handlers = {
+            'run.async': self._handle_run_async,
+            'download': self._handle_download,
+            'copy.async': self._handle_copy_async,
+        }
+        
+        handler = handlers.get(action)
+        if handler:
+            # Start background thread
+            thread = threading.Thread(
+                target=handler,
+                args=(payload, callback_id),
+                daemon=True
+            )
+            thread.start()
+        else:
+            GLib.idle_add(self._send_error, callback_id, f"Unknown async action: {action}")
+    
+    def _send_progress(self, callback_id, progress_data):
+        """Send progress update to JavaScript (must be called via GLib.idle_add)"""
+        response = json.dumps({
+            'callbackId': callback_id,
+            'type': 'progress',
+            'data': progress_data
+        })
+        script = f"window.__aegisProgress({response})"
+        self.webview.evaluate_javascript(script, -1, None, None, None, None, None)
+        return False  # Don't repeat
+    
+    def _handle_run_async(self, payload, callback_id):
+        """Execute command asynchronously with streaming output"""
+        import subprocess
+        
+        try:
+            cmd = payload.get('sh', '')
+            
+            process = subprocess.Popen(
+                cmd,
+                shell=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1
+            )
+            
+            output_lines = []
+            
+            # Stream output line by line
+            for line in process.stdout:
+                output_lines.append(line)
+                GLib.idle_add(self._send_progress, callback_id, {
+                    'type': 'output',
+                    'line': line.rstrip('\n')
+                })
+            
+            process.wait()
+            
+            # Send final result
+            result = {
+                'output': ''.join(output_lines),
+                'exitCode': process.returncode
+            }
+            GLib.idle_add(self._send_response, callback_id, result)
+            
+        except Exception as e:
+            GLib.idle_add(self._send_error, callback_id, str(e))
+    
+    def _handle_download(self, payload, callback_id):
+        """Download file with progress updates"""
+        try:
+            url = payload.get('url')
+            dest = payload.get('dest')
+            
+            # Create request
+            req = urllib.request.Request(url, headers={
+                'User-Agent': 'Aegis/0.1.0'
+            })
+            
+            response = urllib.request.urlopen(req, timeout=30)
+            total_size = int(response.headers.get('Content-Length', 0))
+            downloaded = 0
+            
+            # Ensure destination directory exists
+            os.makedirs(os.path.dirname(dest) or '.', exist_ok=True)
+            
+            with open(dest, 'wb') as f:
+                while True:
+                    chunk = response.read(8192)
+                    if not chunk:
+                        break
+                    
+                    f.write(chunk)
+                    downloaded += len(chunk)
+                    
+                    # Send progress update
+                    progress = {
+                        'downloaded': downloaded,
+                        'total': total_size,
+                        'percent': (downloaded / total_size * 100) if total_size else 0
+                    }
+                    GLib.idle_add(self._send_progress, callback_id, progress)
+            
+            # Send completion
+            result = {
+                'success': True,
+                'path': dest,
+                'size': downloaded
+            }
+            GLib.idle_add(self._send_response, callback_id, result)
+            
+        except Exception as e:
+            GLib.idle_add(self._send_error, callback_id, str(e))
+    
+    def _handle_copy_async(self, payload, callback_id):
+        """Copy files/directories with progress (for large files)"""
+        try:
+            src = payload.get('src')
+            dest = payload.get('dest')
+            
+            if os.path.isdir(src):
+                # Copy directory
+                def copy_with_progress(src_dir, dest_dir):
+                    total_files = sum([len(files) for _, _, files in os.walk(src_dir)])
+                    copied = 0
+                    
+                    for root, dirs, files in os.walk(src_dir):
+                        rel_path = os.path.relpath(root, src_dir)
+                        dest_path = os.path.join(dest_dir, rel_path)
+                        os.makedirs(dest_path, exist_ok=True)
+                        
+                        for file in files:
+                            src_file = os.path.join(root, file)
+                            dest_file = os.path.join(dest_path, file)
+                            shutil.copy2(src_file, dest_file)
+                            copied += 1
+                            
+                            GLib.idle_add(self._send_progress, callback_id, {
+                                'copied': copied,
+                                'total': total_files,
+                                'percent': (copied / total_files * 100) if total_files else 100,
+                                'current': file
+                            })
+                
+                copy_with_progress(src, dest)
+            else:
+                # Copy single file with progress
+                file_size = os.path.getsize(src)
+                copied = 0
+                
+                with open(src, 'rb') as fsrc:
+                    with open(dest, 'wb') as fdest:
+                        while True:
+                            chunk = fsrc.read(8192)
+                            if not chunk:
+                                break
+                            fdest.write(chunk)
+                            copied += len(chunk)
+                            
+                            GLib.idle_add(self._send_progress, callback_id, {
+                                'copied': copied,
+                                'total': file_size,
+                                'percent': (copied / file_size * 100) if file_size else 100
+                            })
+            
+            result = {'success': True, 'src': src, 'dest': dest}
+            GLib.idle_add(self._send_response, callback_id, result)
+            
+        except Exception as e:
+            GLib.idle_add(self._send_error, callback_id, str(e))
     
     def run(self):
         """Show window and start main loop"""
