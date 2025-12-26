@@ -181,7 +181,51 @@ console.log(result.output);
 // Python code
 const py = await Aegis.run({ py: '2 + 2' });
 console.log(py.output);  // "4"
+
+// Async command with streaming output (UI won't freeze!)
+await Aegis.runAsync(
+    { sh: 'apt update' },
+    (progress) => console.log(progress.line)
+);
 ```
+
+### Downloads (with aria2c turbo mode!)
+
+Aegis uses **aria2c** for blazing fast downloads with multiple connections:
+
+```javascript
+// Basic download with progress
+await Aegis.download(
+    { 
+        url: 'https://example.com/large-file.zip',
+        dest: '/home/user/downloads/file.zip'
+    },
+    (progress) => {
+        console.log(`${progress.percent.toFixed(1)}%`);
+        console.log(`Speed: ${progress.speed}`);     // "5.2 MiB/s"
+        console.log(`Engine: ${progress.engine}`);   // "aria2c" or "urllib"
+    }
+);
+
+// Turbo mode with 16 connections (for fast internet)
+await Aegis.download(
+    {
+        url: 'https://example.com/game.iso',
+        dest: '/home/user/games/game.iso',
+        connections: 16  // Up to 16 simultaneous connections!
+    },
+    (progress) => {
+        progressBar.style.width = progress.percent + '%';
+        speedLabel.textContent = progress.speed;
+    }
+);
+```
+
+**Note:** For maximum speed, install aria2c:
+```bash
+sudo apt install aria2
+```
+If aria2c is not installed, Aegis automatically falls back to standard downloads.
 
 ## 🔒 Security (preload.js)
 

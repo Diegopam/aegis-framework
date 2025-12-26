@@ -677,45 +677,136 @@ class AegisWindow(Gtk.Window):
             GLib.idle_add(self._send_error, callback_id, str(e))
     
     def _handle_download(self, payload, callback_id):
-        """Download file with progress updates"""
+        """Download file with progress updates - uses aria2c if available for faster downloads"""
+        url = payload.get('url')
+        dest = payload.get('dest')
+        connections = payload.get('connections', 8)  # Max simultaneous connections
+        
         try:
-            url = payload.get('url')
-            dest = payload.get('dest')
+            # Ensure destination directory exists
+            os.makedirs(os.path.dirname(dest) or '.', exist_ok=True)
             
-            # Create request
+            # Check if aria2c is available for faster downloads
+            if shutil.which('aria2c'):
+                self._download_with_aria2(url, dest, connections, callback_id)
+            else:
+                self._download_with_urllib(url, dest, callback_id)
+                
+        except Exception as e:
+            GLib.idle_add(self._send_error, callback_id, str(e))
+    
+    def _download_with_aria2(self, url, dest, connections, callback_id):
+        """Download using aria2c for multi-connection speed boost"""
+        import subprocess
+        import re
+        
+        try:
+            dest_dir = os.path.dirname(dest) or '.'
+            dest_file = os.path.basename(dest)
+            
+            cmd = [
+                'aria2c',
+                '-x', str(connections),      # Max connections per server
+                '-s', str(connections),      # Split file into N parts
+                '-k', '1M',                  # Min split size
+                '--console-log-level=warn',
+                '--summary-interval=1',
+                '--download-result=hide',
+                '-d', dest_dir,
+                '-o', dest_file,
+                '--allow-overwrite=true',
+                url
+            ]
+            
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1
+            )
+            
+            total_size = 0
+            downloaded = 0
+            
+            for line in process.stdout:
+                # Parse aria2c progress: [#abc123 1.2MiB/50MiB(2%) CN:8 DL:5.2MiB]
+                progress_match = re.search(r'\[#\w+\s+([\d.]+)(\w+)/([\d.]+)(\w+)\s*\((\d+)%\).*DL:([\d.]+)(\w+)', line)
+                if progress_match:
+                    dl_num, dl_unit, total_num, total_unit, percent, speed_num, speed_unit = progress_match.groups()
+                    
+                    # Convert to bytes
+                    def to_bytes(num, unit):
+                        multipliers = {'B': 1, 'KiB': 1024, 'MiB': 1024**2, 'GiB': 1024**3}
+                        return float(num) * multipliers.get(unit, 1)
+                    
+                    downloaded = int(to_bytes(dl_num, dl_unit))
+                    total_size = int(to_bytes(total_num, total_unit))
+                    speed = f"{speed_num} {speed_unit}/s"
+                    
+                    progress = {
+                        'downloaded': downloaded,
+                        'total': total_size,
+                        'percent': float(percent),
+                        'speed': speed,
+                        'connections': connections,
+                        'engine': 'aria2c'
+                    }
+                    GLib.idle_add(self._send_progress, callback_id, progress)
+            
+            process.wait()
+            
+            if process.returncode == 0:
+                # Get final file size
+                final_size = os.path.getsize(dest) if os.path.exists(dest) else downloaded
+                result = {
+                    'success': True,
+                    'path': dest,
+                    'size': final_size,
+                    'engine': 'aria2c'
+                }
+                GLib.idle_add(self._send_response, callback_id, result)
+            else:
+                GLib.idle_add(self._send_error, callback_id, f"aria2c exited with code {process.returncode}")
+                
+        except Exception as e:
+            GLib.idle_add(self._send_error, callback_id, str(e))
+    
+    def _download_with_urllib(self, url, dest, callback_id):
+        """Fallback download using urllib (single connection)"""
+        try:
             req = urllib.request.Request(url, headers={
                 'User-Agent': 'Aegis/0.1.0'
             })
             
-            response = urllib.request.urlopen(req, timeout=30)
+            response = urllib.request.urlopen(req, timeout=60)
             total_size = int(response.headers.get('Content-Length', 0))
             downloaded = 0
             
-            # Ensure destination directory exists
-            os.makedirs(os.path.dirname(dest) or '.', exist_ok=True)
-            
             with open(dest, 'wb') as f:
                 while True:
-                    chunk = response.read(8192)
+                    chunk = response.read(65536)  # 64KB chunks
                     if not chunk:
                         break
                     
                     f.write(chunk)
                     downloaded += len(chunk)
                     
-                    # Send progress update
                     progress = {
                         'downloaded': downloaded,
                         'total': total_size,
-                        'percent': (downloaded / total_size * 100) if total_size else 0
+                        'percent': (downloaded / total_size * 100) if total_size else 0,
+                        'speed': None,
+                        'connections': 1,
+                        'engine': 'urllib'
                     }
                     GLib.idle_add(self._send_progress, callback_id, progress)
             
-            # Send completion
             result = {
                 'success': True,
                 'path': dest,
-                'size': downloaded
+                'size': downloaded,
+                'engine': 'urllib'
             }
             GLib.idle_add(self._send_response, callback_id, result)
             
