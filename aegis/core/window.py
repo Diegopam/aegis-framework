@@ -686,9 +686,23 @@ class AegisWindow(Gtk.Window):
             # Ensure destination directory exists
             os.makedirs(os.path.dirname(dest) or '.', exist_ok=True)
             
-            # Check if aria2c is available for faster downloads
-            if shutil.which('aria2c'):
-                self._download_with_aria2(url, dest, connections, callback_id)
+            # Check if aria2c is available
+            aria2c_path = shutil.which('aria2c')
+            
+            if aria2c_path:
+                # Check if aria2c is from snap (has sandbox restrictions on hidden dirs)
+                is_snap = '/snap/' in aria2c_path
+                
+                # Check if destination is in a hidden directory
+                dest_has_hidden = any(part.startswith('.') for part in dest.split('/') if part)
+                
+                # Use aria2c only if: not snap, OR dest is not hidden
+                if not is_snap or not dest_has_hidden:
+                    self._download_with_aria2(url, dest, connections, callback_id)
+                else:
+                    # Snap aria2c can't access hidden dirs - use urllib
+                    print(f"[Aegis] Snap aria2c can't access hidden dirs, using urllib")
+                    self._download_with_urllib(url, dest, callback_id)
             else:
                 self._download_with_urllib(url, dest, callback_id)
                 
