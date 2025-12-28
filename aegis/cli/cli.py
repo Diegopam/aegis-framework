@@ -463,18 +463,189 @@ aegis build
     └── icon.png         # App icon (256x256 recommended)
 ```
 
-## 🔌 Aegis API Reference
+---
 
-### File Operations
+# ⚡ Aegis Utility API
+
+Aegis includes a powerful utility API that simplifies common JavaScript patterns!
+
+## Event Shortcuts
+
+```javascript
+// Click event (works on single or multiple elements!)
+Aegis.click('#btn', () => alert('Clicked!'));
+Aegis.click('.card', (e) => console.log(e.target));
+
+// More event shortcuts
+Aegis.submit('#form', handler);
+Aegis.change('#select', handler);
+Aegis.input('#search', handler);
+Aegis.keypress('#input', handler);
+
+// Hover with enter/leave
+Aegis.hover('#card', onEnter, onLeave);
+
+// Universal event binding
+Aegis.on('.field', 'focus blur', handler);  // Multiple events!
+Aegis.once('#btn', 'click', handler);       // Fire once only
+```
+
+## Element Selection & Manipulation
+
+```javascript
+// Select elements
+const el = Aegis.get('#my-id');
+const all = Aegis.getAll('.cards');
+
+// Create elements
+Aegis.create('div', {{
+    id: 'my-div',
+    class: 'card active',
+    html: '<h1>Hello!</h1>',
+    style: {{ color: 'red' }},
+    on: {{ click: handler }},
+    parent: '#container'
+}});
+
+// Classes
+Aegis.addClass('#el', 'active');
+Aegis.removeClass('#el', 'hidden');
+Aegis.toggleClass('#el', 'visible');
+
+// Styles & Visibility
+Aegis.css('#el', {{ color: 'blue', fontSize: '18px' }});
+Aegis.hide('#modal');
+Aegis.show('#modal');
+Aegis.fadeIn('#el', 300);
+Aegis.fadeOut('#el', 300);
+
+// Content
+Aegis.html('#container', '<p>New content</p>');
+Aegis.text('#title', 'Hello World');
+Aegis.val('#input', 'value');
+```
+
+## Forms
+
+```javascript
+// Serialize form to object
+const data = Aegis.form.serialize('#my-form');
+// {{ name: 'John', email: 'john@email.com' }}
+
+// Fill form with data
+Aegis.form.fill('#form', {{ name: 'Jane', email: 'jane@email.com' }});
+
+// Validate
+const result = Aegis.form.validate('#form', {{
+    email: {{ required: true, email: true }},
+    password: {{ required: true, minLength: 8 }}
+}});
+if (!result.valid) console.log(result.errors);
+```
+
+## HTTP Requests
+
+```javascript
+const users = await Aegis.http.get('/api/users');
+await Aegis.http.post('/api/users', {{ name: 'John' }});
+await Aegis.http.put('/api/users/1', {{ name: 'Jane' }});
+await Aegis.http.delete('/api/users/1');
+```
+
+## String Utilities
+
+```javascript
+Aegis.string.capitalize('hello');       // 'Hello'
+Aegis.string.slugify('Hello World!');   // 'hello-world'
+Aegis.string.camelCase('hello-world');  // 'helloWorld'
+Aegis.string.truncate('Long text', 5);  // 'Long ...'
+Aegis.string.template('Hi {{{{name}}}}!', {{ name: 'John' }}); // 'Hi John!'
+```
+
+## Array Utilities
+
+```javascript
+Aegis.array.unique([1, 2, 2, 3]);        // [1, 2, 3]
+Aegis.array.shuffle([1, 2, 3]);          // Random order
+Aegis.array.groupBy(users, 'role');      // Group by key
+Aegis.array.sortBy(users, 'name');       // Sort by key
+Aegis.array.chunk([1,2,3,4,5], 2);       // [[1,2], [3,4], [5]]
+```
+
+## Object Utilities
+
+```javascript
+Aegis.object.clone(obj);                 // Deep clone
+Aegis.object.merge(obj1, obj2);          // Merge
+Aegis.object.pick(obj, ['name']);        // Pick keys
+Aegis.object.get(user, 'address.city');  // Deep get
+```
+
+## Date Utilities
+
+```javascript
+Aegis.date.format(date, 'YYYY-MM-DD');   // '2024-12-28'
+Aegis.date.ago(date);                     // '5 minutes ago'
+Aegis.date.isToday(date);                 // true/false
+```
+
+## Number Utilities
+
+```javascript
+Aegis.number.format(1234567);             // '1.234.567'
+Aegis.number.currency(1234.56);           // 'R$ 1.234,56'
+Aegis.number.bytes(1536000);              // '1.46 MB'
+```
+
+## Toast Notifications
+
+```javascript
+Aegis.toast('Hello!');
+Aegis.toast('Success!', {{ type: 'success' }});
+Aegis.toast('Error!', {{ type: 'error', duration: 5000 }});
+```
+
+## Storage
+
+```javascript
+Aegis.storage.set('user', {{ name: 'John' }});  // Auto JSON
+Aegis.storage.get('user');                       // Auto parse
+Aegis.storage.remove('user');
+```
+
+## Validation
+
+```javascript
+Aegis.is.email('test@email.com');   // true
+Aegis.is.url('https://...');        // true
+Aegis.is.empty([]);                 // true
+Aegis.is.mobile();                  // true if mobile
+```
+
+## More Utilities
+
+```javascript
+await Aegis.clipboard.copy('text');       // Copy to clipboard
+Aegis.debounce(fn, 300);                  // Debounce
+Aegis.throttle(fn, 100);                  // Throttle
+await Aegis.delay(1000);                  // Wait 1 second
+Aegis.uid('card');                        // 'card-123456789-abc'
+Aegis.random.uuid();                      // Full UUID
+```
+
+---
+
+# 🔌 Backend API (Python Bridge)
+
+## File Operations
 
 ```javascript
 // Read directory contents
 const dir = await Aegis.read({{ path: '/home/user' }});
-console.log(dir.entries);  // [{{ name: 'file.txt', isFile: true, size: 1234 }}, ...]
+console.log(dir.entries);
 
 // Read file content
 const file = await Aegis.read({{ path: '/home/user', file: 'data.txt' }});
-console.log(file.content);
 
 // Write file
 await Aegis.write({{
@@ -483,166 +654,76 @@ await Aegis.write({{
     content: 'Hello, Aegis!'
 }});
 
-// Check if file/directory exists
+// Check if exists
 const info = await Aegis.exists({{ path: '/home/user/file.txt' }});
-if (info.exists && info.isFile) {{
-    console.log('File exists!');
-}}
 
 // Create directory
 await Aegis.mkdir({{ path: '/home/user/new-folder' }});
 
-// Delete file or directory
+// Delete
 await Aegis.remove({{ path: '/home/user/old-file.txt' }});
-await Aegis.remove({{ path: '/home/user/old-folder', recursive: true }});
 
-// Copy file or directory
-await Aegis.copy({{
-    src: '/home/user/file.txt',
-    dest: '/home/user/backup/file.txt'
-}});
-
-// Move/rename file or directory
-await Aegis.move({{
-    src: '/home/user/old-name.txt',
-    dest: '/home/user/new-name.txt'
-}});
+// Copy & Move
+await Aegis.copy({{ src: '/from', dest: '/to' }});
+await Aegis.move({{ src: '/from', dest: '/to' }});
 ```
 
-### Execute Commands
+## Execute Commands
 
 ```javascript
-// Run shell command
+// Shell command
 const result = await Aegis.run({{ sh: 'ls -la' }});
-console.log(result.output);
-console.log(result.exitCode);
 
-// Run Python code
-const pyResult = await Aegis.run({{ py: 'print(2 + 2)' }});
-console.log(pyResult.output);  // "4"
-
-// Run async command with streaming output (no UI freeze!)
+// Async with streaming (UI doesn't freeze!)
 await Aegis.runAsync(
-    {{ sh: 'apt update' }},
-    (progress) => {{
-        console.log(progress.line);  // Each line as it comes
-    }}
+    {{ sh: 'long-command' }},
+    (progress) => console.log(progress.line)
 );
 ```
 
-### Dialogs
+## Dialogs
 
 ```javascript
-// Info dialog
-await Aegis.dialog.message({{
-    type: 'info',
-    title: 'Success',
-    message: 'Operation completed!'
-}});
-
-// Confirmation dialog
-const confirm = await Aegis.dialog.message({{
-    type: 'question',
-    title: 'Confirm',
-    message: 'Are you sure?',
-    buttons: 'yesno'
-}});
-if (confirm.response) {{
-    // User clicked Yes
-}}
-
-// Open file dialog
-const file = await Aegis.dialog.open({{
-    title: 'Select a file',
-    filters: [{{ name: 'Images', extensions: ['png', 'jpg', 'gif'] }}]
-}});
-console.log(file.path);
-
-// Save file dialog
-const savePath = await Aegis.dialog.save({{
-    title: 'Save as',
-    defaultName: 'document.txt'
-}});
+await Aegis.dialog.message({{ type: 'info', title: 'Hi', message: 'Hello!' }});
+const file = await Aegis.dialog.open({{ title: 'Select file' }});
+const path = await Aegis.dialog.save({{ title: 'Save as' }});
 ```
 
-### Download with Progress
+## Download with Progress
 
 ```javascript
-// Download file with progress bar
 await Aegis.download(
-    {{
-        url: 'https://example.com/file.zip',
-        dest: '/home/user/downloads/file.zip'
-    }},
-    (progress) => {{
-        const percent = progress.percent.toFixed(1);
-        progressBar.style.width = percent + '%';
-        statusText.textContent = `${{progress.downloaded}} / ${{progress.total}} bytes`;
-    }}
+    {{ url: 'https://example.com/file.zip', dest: '/path/file.zip' }},
+    (progress) => console.log(progress.percent + '%')
 );
 ```
 
-### App Control
+## App Control
 
 ```javascript
-// Window controls
 Aegis.app.minimize();
 Aegis.app.maximize();
 Aegis.app.quit();
-
-// Get system paths (localized for your language!)
 const home = await Aegis.app.getPath({{ name: 'home' }});
-const docs = await Aegis.app.getPath({{ name: 'documents' }});  // Returns "Documentos" on pt-BR
-const downloads = await Aegis.app.getPath({{ name: 'downloads' }});
-// Also: desktop, music, pictures, videos
 ```
 
-### Window Control (Frameless Windows)
+## Window Control (Frameless)
 
 ```javascript
-// Make element draggable for window movement
 Aegis.window.moveBar('#titlebar', {{ exclude: '.btn-close' }});
-
-// Setup resize handles
-Aegis.window.resizeHandles({{
-    '.resize-n': 'n',
-    '.resize-s': 's',
-    '.resize-se': 'se',
-    // Options: n, s, e, w, ne, nw, se, sw
-}});
-
-// Get/set window size
-const size = await Aegis.window.getSize();
-await Aegis.window.setSize({{ width: 1024, height: 768 }});
-
-// Get/set window position
-const pos = await Aegis.window.getPosition();
-await Aegis.window.setPosition({{ x: 100, y: 100 }});
+Aegis.window.resizeHandles({{ '.resize-se': 'se' }});
 ```
+
+---
 
 ## 🔒 Security (preload.js)
 
-Control which APIs your app can access:
-
 ```javascript
-// src/preload.js
 Aegis.expose([
-    'read',      // File reading
-    'write',     // File writing
-    'run',       // Command execution
-    'dialog',    // Native dialogs
-    'app',       // App control
-    'window',    // Window control
-    'download',  // Download with progress
-    'exists',    // File existence
-    'mkdir',     // Create directories
-    'remove',    // Delete files
-    'copy',      // Copy files
-    'move'       // Move/rename files
+    'read', 'write', 'run', 'dialog', 'app', 'window',
+    'download', 'exists', 'mkdir', 'remove', 'copy', 'move'
 ]);
-
-// For maximum security, only expose what you need!
-// If you omit 'run', the app cannot execute shell commands
+// Omit 'run' to prevent shell command execution!
 ```
 
 ## ⚙️ Configuration (aegis.config.json)
@@ -650,53 +731,36 @@ Aegis.expose([
 ```json
 {{
     "name": "{project_name}",
-    "title": "My Awesome App",
-    "version": "1.0.0",
-    "main": "src/index.html",
-    "preload": "src/preload.js",
+    "title": "My App",
     "width": 1200,
     "height": 800,
-    "resizable": true,
     "frame": true,
-    "icon": "assets/icon.png"
+    "resizable": true
 }}
 ```
 
-| Option | Description |
-|--------|-------------|
-| `frame` | Set to `false` for frameless window (custom titlebar) |
-| `resizable` | Allow window resizing |
-| `width/height` | Initial window size |
-| `devTools` | Enable right-click → Inspect Element |
-
-## 📦 Building AppImage
+## 📦 Build AppImage
 
 ```bash
 aegis build
 ```
 
-This creates a portable AppImage (~200KB!) in the `dist/` folder.
+Creates a portable ~200KB AppImage in `dist/`.
 
-**Note:** The AppImage requires `python3-gi` and `gir1.2-webkit2-4.1` on the target system.
-
-## 🆚 Why Aegis over Electron?
+## 🆚 Aegis vs Electron
 
 | Aspect | Electron | Aegis |
 |--------|----------|-------|
 | App Size | ~150 MB | **~200 KB** |
-| Backend | Node.js | Python |
-| Renderer | Chromium (bundled) | WebKit2GTK (system) |
-| RAM Usage | High (~100MB+) | Low (~30MB) |
+| RAM Usage | ~100 MB | ~30 MB |
 | Platform | Cross-platform | Linux |
 
-## 📚 Learn More
+## 📚 More Info
 
-- [Aegis GitHub](https://github.com/Diegopam/aegis-framework)
-- [npm Package](https://www.npmjs.com/package/aegis-framework)
+- [GitHub](https://github.com/Diegopam/aegis-framework)
+- [npm](https://www.npmjs.com/package/aegis-framework)
 
-## License
-
-MIT
+MIT License
 '''
         with open(project_dir / 'README.md', 'w') as f:
             f.write(readme_content)
