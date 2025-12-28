@@ -604,310 +604,398 @@
             return invoke(action, payload);
         },
 
-        // ==================== Utility Functions ====================
+        // ==================== DOM Utilities ====================
 
         /**
          * Version of Aegis
          */
-        version: '0.1.4',
+        version: '0.2.0',
 
         /**
          * Check if running in Aegis environment
          */
         isAegis: function () {
             return !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.aegis);
-        }
-    };
+        },
 
-    // ==================== Aegis Utility API ($ helpers) ====================
+        // ==================== Element Selection ====================
 
-    /**
-     * Select single element (like jQuery $)
-     * @param {string} selector - CSS selector
-     * @returns {Element|null}
-     */
-    function $(selector) {
-        if (selector.startsWith('#') && !selector.includes(' ') && !selector.includes('.')) {
-            return document.getElementById(selector.slice(1));
-        }
-        return document.querySelector(selector);
-    }
+        /**
+         * Get single element by selector
+         */
+        get: function (selector) {
+            if (typeof selector !== 'string') return selector;
+            if (selector.startsWith('#') && !selector.includes(' ') && !selector.includes('.')) {
+                return document.getElementById(selector.slice(1));
+            }
+            return document.querySelector(selector);
+        },
 
-    /**
-     * Select all elements
-     * @param {string} selector - CSS selector
-     * @returns {NodeList}
-     */
-    function $$(selector) {
-        return document.querySelectorAll(selector);
-    }
+        /**
+         * Get all elements by selector
+         */
+        getAll: function (selector) {
+            return document.querySelectorAll(selector);
+        },
 
-    /**
-     * Utility methods attached to $
-     */
-    $.on = function (selector, events, handler, options = {}) {
-        const elements = typeof selector === 'string' ? $$(selector) : [selector];
-        const eventList = events.split(' ');
-        elements.forEach(el => {
-            eventList.forEach(event => {
-                el.addEventListener(event.trim(), handler, options);
+        // ==================== Event Shortcuts ====================
+
+        /**
+         * Universal event listener
+         */
+        on: function (selector, events, handler, options = {}) {
+            const elements = typeof selector === 'string' ? Aegis.getAll(selector) : [selector];
+            const eventList = events.split(' ');
+            elements.forEach(el => {
+                eventList.forEach(event => {
+                    el.addEventListener(event.trim(), handler, options);
+                });
             });
-        });
-        return elements;
-    };
+            return elements;
+        },
 
-    $.once = function (selector, events, handler) {
-        return $.on(selector, events, handler, { once: true });
-    };
+        /**
+         * One-time event listener
+         */
+        once: function (selector, events, handler) {
+            return Aegis.on(selector, events, handler, { once: true });
+        },
 
-    $.off = function (selector, events, handler) {
-        const elements = typeof selector === 'string' ? $$(selector) : [selector];
-        const eventList = events.split(' ');
-        elements.forEach(el => {
-            eventList.forEach(event => {
-                el.removeEventListener(event.trim(), handler);
+        /**
+         * Remove event listener
+         */
+        off: function (selector, events, handler) {
+            const elements = typeof selector === 'string' ? Aegis.getAll(selector) : [selector];
+            const eventList = events.split(' ');
+            elements.forEach(el => {
+                eventList.forEach(event => {
+                    el.removeEventListener(event.trim(), handler);
+                });
             });
-        });
-        return elements;
-    };
+            return elements;
+        },
 
-    $.create = function (tag, options = {}) {
-        const el = document.createElement(tag);
-        if (options.id) el.id = options.id;
-        if (options.class) el.className = options.class;
-        if (options.html) el.innerHTML = options.html;
-        if (options.text) el.textContent = options.text;
-        if (options.attrs) {
-            Object.entries(options.attrs).forEach(([key, value]) => {
-                el.setAttribute(key, value);
-            });
-        }
-        if (options.style) {
-            Object.assign(el.style, options.style);
-        }
-        if (options.data) {
-            Object.entries(options.data).forEach(([key, value]) => {
-                el.dataset[key] = value;
-            });
-        }
-        if (options.on) {
-            Object.entries(options.on).forEach(([event, handler]) => {
-                el.addEventListener(event, handler);
-            });
-        }
-        if (options.parent) {
-            const parent = typeof options.parent === 'string' ? $(options.parent) : options.parent;
-            if (parent) parent.appendChild(el);
-        }
-        return el;
-    };
+        /**
+         * Click shortcut
+         */
+        click: function (selector, handler) {
+            return Aegis.on(selector, 'click', handler);
+        },
 
-    $.addClass = function (selector, ...classes) {
-        const el = typeof selector === 'string' ? $(selector) : selector;
-        if (el) el.classList.add(...classes);
-        return el;
-    };
+        /**
+         * Submit shortcut
+         */
+        submit: function (selector, handler) {
+            return Aegis.on(selector, 'submit', handler);
+        },
 
-    $.removeClass = function (selector, ...classes) {
-        const el = typeof selector === 'string' ? $(selector) : selector;
-        if (el) el.classList.remove(...classes);
-        return el;
-    };
+        /**
+         * Change shortcut
+         */
+        change: function (selector, handler) {
+            return Aegis.on(selector, 'change', handler);
+        },
 
-    $.toggleClass = function (selector, className, force) {
-        const el = typeof selector === 'string' ? $(selector) : selector;
-        if (el) el.classList.toggle(className, force);
-        return el;
-    };
+        /**
+         * Input shortcut
+         */
+        input: function (selector, handler) {
+            return Aegis.on(selector, 'input', handler);
+        },
 
-    $.hasClass = function (selector, className) {
-        const el = typeof selector === 'string' ? $(selector) : selector;
-        return el ? el.classList.contains(className) : false;
-    };
+        /**
+         * Hover shortcut (mouseenter + mouseleave)
+         */
+        hover: function (selector, onEnter, onLeave) {
+            Aegis.on(selector, 'mouseenter', onEnter);
+            if (onLeave) Aegis.on(selector, 'mouseleave', onLeave);
+        },
 
-    $.css = function (selector, styles) {
-        const el = typeof selector === 'string' ? $(selector) : selector;
-        if (el && styles) Object.assign(el.style, styles);
-        return el;
-    };
+        /**
+         * Key press shortcut
+         */
+        keypress: function (selector, handler) {
+            return Aegis.on(selector, 'keydown', handler);
+        },
 
-    $.hide = function (selector) {
-        const el = typeof selector === 'string' ? $(selector) : selector;
-        if (el) el.style.display = 'none';
-        return el;
-    };
+        // ==================== Element Creation ====================
 
-    $.show = function (selector, display = 'block') {
-        const el = typeof selector === 'string' ? $(selector) : selector;
-        if (el) el.style.display = display;
-        return el;
-    };
+        /**
+         * Create element with options
+         */
+        create: function (tag, options = {}) {
+            const el = document.createElement(tag);
+            if (options.id) el.id = options.id;
+            if (options.class) el.className = options.class;
+            if (options.html) el.innerHTML = options.html;
+            if (options.text) el.textContent = options.text;
+            if (options.value !== undefined) el.value = options.value;
+            if (options.attrs) {
+                Object.entries(options.attrs).forEach(([key, value]) => {
+                    el.setAttribute(key, value);
+                });
+            }
+            if (options.style) {
+                Object.assign(el.style, options.style);
+            }
+            if (options.data) {
+                Object.entries(options.data).forEach(([key, value]) => {
+                    el.dataset[key] = value;
+                });
+            }
+            if (options.on) {
+                Object.entries(options.on).forEach(([event, handler]) => {
+                    el.addEventListener(event, handler);
+                });
+            }
+            if (options.children) {
+                options.children.forEach(child => el.appendChild(child));
+            }
+            if (options.parent) {
+                const parent = Aegis.get(options.parent);
+                if (parent) parent.appendChild(el);
+            }
+            return el;
+        },
 
-    $.toggle = function (selector) {
-        const el = typeof selector === 'string' ? $(selector) : selector;
-        if (el) el.style.display = el.style.display === 'none' ? '' : 'none';
-        return el;
-    };
+        // ==================== Class Manipulation ====================
 
-    $.attr = function (selector, name, value) {
-        const el = typeof selector === 'string' ? $(selector) : selector;
-        if (!el) return null;
-        if (value === undefined) return el.getAttribute(name);
-        el.setAttribute(name, value);
-        return el;
-    };
+        addClass: function (selector, ...classes) {
+            const el = Aegis.get(selector);
+            if (el) el.classList.add(...classes);
+            return el;
+        },
 
-    $.data = function (selector, key, value) {
-        const el = typeof selector === 'string' ? $(selector) : selector;
-        if (!el) return null;
-        if (value === undefined) return el.dataset[key];
-        el.dataset[key] = value;
-        return el;
-    };
+        removeClass: function (selector, ...classes) {
+            const el = Aegis.get(selector);
+            if (el) el.classList.remove(...classes);
+            return el;
+        },
 
-    $.html = function (selector, content) {
-        const el = typeof selector === 'string' ? $(selector) : selector;
-        if (!el) return null;
-        if (content === undefined) return el.innerHTML;
-        el.innerHTML = content;
-        return el;
-    };
+        toggleClass: function (selector, className, force) {
+            const el = Aegis.get(selector);
+            if (el) el.classList.toggle(className, force);
+            return el;
+        },
 
-    $.text = function (selector, content) {
-        const el = typeof selector === 'string' ? $(selector) : selector;
-        if (!el) return null;
-        if (content === undefined) return el.textContent;
-        el.textContent = content;
-        return el;
-    };
+        hasClass: function (selector, className) {
+            const el = Aegis.get(selector);
+            return el ? el.classList.contains(className) : false;
+        },
 
-    $.each = function (selector, callback) {
-        const elements = typeof selector === 'string' ? $$(selector) : selector;
-        elements.forEach((el, i) => callback(el, i));
-        return elements;
-    };
+        // ==================== Style Manipulation ====================
 
-    $.remove = function (selector) {
-        const el = typeof selector === 'string' ? $(selector) : selector;
-        if (el && el.parentNode) el.parentNode.removeChild(el);
-        return el;
-    };
+        css: function (selector, styles) {
+            const el = Aegis.get(selector);
+            if (el && styles) Object.assign(el.style, styles);
+            return el;
+        },
 
-    $.append = function (parent, child) {
-        const p = typeof parent === 'string' ? $(parent) : parent;
-        const c = typeof child === 'string' ? $(child) : child;
-        if (p && c) p.appendChild(c);
-        return p;
-    };
+        hide: function (selector) {
+            const el = Aegis.get(selector);
+            if (el) el.style.display = 'none';
+            return el;
+        },
 
-    $.prepend = function (parent, child) {
-        const p = typeof parent === 'string' ? $(parent) : parent;
-        const c = typeof child === 'string' ? $(child) : child;
-        if (p && c) p.insertBefore(c, p.firstChild);
-        return p;
-    };
+        show: function (selector, display = 'block') {
+            const el = Aegis.get(selector);
+            if (el) el.style.display = display;
+            return el;
+        },
 
-    // JSON Utilities
-    $.parseJSON = function (str, fallback = null) {
-        try {
-            return JSON.parse(str);
-        } catch (e) {
-            return fallback;
-        }
-    };
+        toggleDisplay: function (selector) {
+            const el = Aegis.get(selector);
+            if (el) el.style.display = el.style.display === 'none' ? '' : 'none';
+            return el;
+        },
 
-    $.stringify = function (obj, pretty = false) {
-        return JSON.stringify(obj, null, pretty ? 2 : 0);
-    };
+        // ==================== Content Manipulation ====================
 
-    // LocalStorage Utilities
-    $.storage = {
-        get: function (key, fallback = null) {
+        attr: function (selector, name, value) {
+            const el = Aegis.get(selector);
+            if (!el) return null;
+            if (value === undefined) return el.getAttribute(name);
+            el.setAttribute(name, value);
+            return el;
+        },
+
+        data: function (selector, key, value) {
+            const el = Aegis.get(selector);
+            if (!el) return null;
+            if (value === undefined) return el.dataset[key];
+            el.dataset[key] = value;
+            return el;
+        },
+
+        html: function (selector, content) {
+            const el = Aegis.get(selector);
+            if (!el) return null;
+            if (content === undefined) return el.innerHTML;
+            el.innerHTML = content;
+            return el;
+        },
+
+        text: function (selector, content) {
+            const el = Aegis.get(selector);
+            if (!el) return null;
+            if (content === undefined) return el.textContent;
+            el.textContent = content;
+            return el;
+        },
+
+        val: function (selector, value) {
+            const el = Aegis.get(selector);
+            if (!el) return null;
+            if (value === undefined) return el.value;
+            el.value = value;
+            return el;
+        },
+
+        // ==================== DOM Manipulation ====================
+
+        each: function (selector, callback) {
+            const elements = typeof selector === 'string' ? Aegis.getAll(selector) : selector;
+            elements.forEach((el, i) => callback(el, i));
+            return elements;
+        },
+
+        removeEl: function (selector) {
+            const el = Aegis.get(selector);
+            if (el && el.parentNode) el.parentNode.removeChild(el);
+            return el;
+        },
+
+        append: function (parent, child) {
+            const p = Aegis.get(parent);
+            const c = typeof child === 'string' ? Aegis.get(child) : child;
+            if (p && c) p.appendChild(c);
+            return p;
+        },
+
+        prepend: function (parent, child) {
+            const p = Aegis.get(parent);
+            const c = typeof child === 'string' ? Aegis.get(child) : child;
+            if (p && c) p.insertBefore(c, p.firstChild);
+            return p;
+        },
+
+        empty: function (selector) {
+            const el = Aegis.get(selector);
+            if (el) el.innerHTML = '';
+            return el;
+        },
+
+        // ==================== JSON Utilities ====================
+
+        parseJSON: function (str, fallback = null) {
             try {
-                const value = localStorage.getItem(key);
-                return value ? JSON.parse(value) : fallback;
+                return JSON.parse(str);
             } catch (e) {
                 return fallback;
             }
         },
-        set: function (key, value) {
-            try {
-                localStorage.setItem(key, JSON.stringify(value));
-                return true;
-            } catch (e) {
-                return false;
+
+        stringify: function (obj, pretty = false) {
+            return JSON.stringify(obj, null, pretty ? 2 : 0);
+        },
+
+        // ==================== Storage Utilities ====================
+
+        storage: {
+            get: function (key, fallback = null) {
+                try {
+                    const value = localStorage.getItem(key);
+                    return value ? JSON.parse(value) : fallback;
+                } catch (e) {
+                    return fallback;
+                }
+            },
+            set: function (key, value) {
+                try {
+                    localStorage.setItem(key, JSON.stringify(value));
+                    return true;
+                } catch (e) {
+                    return false;
+                }
+            },
+            remove: function (key) {
+                localStorage.removeItem(key);
+            },
+            clear: function () {
+                localStorage.clear();
             }
         },
-        remove: function (key) {
-            localStorage.removeItem(key);
+
+        // ==================== Animation Utilities ====================
+
+        fadeIn: function (selector, duration = 300) {
+            const el = Aegis.get(selector);
+            if (!el) return;
+            el.style.opacity = '0';
+            el.style.display = '';
+            el.style.transition = `opacity ${duration}ms ease`;
+            requestAnimationFrame(() => {
+                el.style.opacity = '1';
+            });
+            return el;
         },
-        clear: function () {
-            localStorage.clear();
-        }
-    };
 
-    // Animation helpers
-    $.fadeIn = function (selector, duration = 300) {
-        const el = typeof selector === 'string' ? $(selector) : selector;
-        if (!el) return;
-        el.style.opacity = '0';
-        el.style.display = '';
-        el.style.transition = `opacity ${duration}ms ease`;
-        requestAnimationFrame(() => {
-            el.style.opacity = '1';
-        });
-        return el;
-    };
+        fadeOut: function (selector, duration = 300) {
+            const el = Aegis.get(selector);
+            if (!el) return;
+            el.style.transition = `opacity ${duration}ms ease`;
+            el.style.opacity = '0';
+            setTimeout(() => {
+                el.style.display = 'none';
+            }, duration);
+            return el;
+        },
 
-    $.fadeOut = function (selector, duration = 300) {
-        const el = typeof selector === 'string' ? $(selector) : selector;
-        if (!el) return;
-        el.style.transition = `opacity ${duration}ms ease`;
-        el.style.opacity = '0';
-        setTimeout(() => {
-            el.style.display = 'none';
-        }, duration);
-        return el;
-    };
+        // ==================== Utility Functions ====================
 
-    // Ready handler (like jQuery $(document).ready)
-    $.ready = function (callback) {
-        if (document.readyState !== 'loading') {
-            callback();
-        } else {
-            document.addEventListener('DOMContentLoaded', callback);
-        }
-    };
-
-    // Debounce utility
-    $.debounce = function (func, wait) {
-        let timeout;
-        return function (...args) {
-            clearTimeout(timeout);
-            timeout = setTimeout(() => func.apply(this, args), wait);
-        };
-    };
-
-    // Throttle utility
-    $.throttle = function (func, limit) {
-        let inThrottle;
-        return function (...args) {
-            if (!inThrottle) {
-                func.apply(this, args);
-                inThrottle = true;
-                setTimeout(() => inThrottle = false, limit);
+        ready: function (callback) {
+            if (document.readyState !== 'loading') {
+                callback();
+            } else {
+                document.addEventListener('DOMContentLoaded', callback);
             }
-        };
+        },
+
+        debounce: function (func, wait) {
+            let timeout;
+            return function (...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), wait);
+            };
+        },
+
+        throttle: function (func, limit) {
+            let inThrottle;
+            return function (...args) {
+                if (!inThrottle) {
+                    func.apply(this, args);
+                    inThrottle = true;
+                    setTimeout(() => inThrottle = false, limit);
+                }
+            };
+        },
+
+        delay: function (ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        },
+
+        /**
+         * Generate unique ID
+         */
+        uid: function (prefix = 'aegis') {
+            return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        }
     };
 
     // ==================== Expose to Window ====================
 
     // Make Aegis available globally
     window.Aegis = Aegis;
-
-    // Expose $ and $$ globally (optional jQuery-like syntax)
-    window.$ = window.$ || $;
-    window.$$ = window.$$ || $$;
 
     // Also expose as module if applicable
     if (typeof module !== 'undefined' && module.exports) {
@@ -917,3 +1005,4 @@
     console.log('%c⚡ Aegis v' + Aegis.version + ' loaded', 'color: #00ff88; font-weight: bold;');
 
 })();
+
