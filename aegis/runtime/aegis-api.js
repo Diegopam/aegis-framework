@@ -989,6 +989,649 @@
          */
         uid: function (prefix = 'aegis') {
             return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        },
+
+        // ==================== Form Utilities ====================
+
+        form: {
+            /**
+             * Serialize form to object
+             */
+            serialize: function (selector) {
+                const form = Aegis.get(selector);
+                if (!form) return {};
+                const data = {};
+                const formData = new FormData(form);
+                formData.forEach((value, key) => {
+                    if (data[key]) {
+                        if (!Array.isArray(data[key])) data[key] = [data[key]];
+                        data[key].push(value);
+                    } else {
+                        data[key] = value;
+                    }
+                });
+                return data;
+            },
+
+            /**
+             * Reset form
+             */
+            reset: function (selector) {
+                const form = Aegis.get(selector);
+                if (form) form.reset();
+                return form;
+            },
+
+            /**
+             * Fill form with data
+             */
+            fill: function (selector, data) {
+                const form = Aegis.get(selector);
+                if (!form) return;
+                Object.entries(data).forEach(([name, value]) => {
+                    const field = form.querySelector(`[name="${name}"]`);
+                    if (field) {
+                        if (field.type === 'checkbox') {
+                            field.checked = !!value;
+                        } else if (field.type === 'radio') {
+                            const radio = form.querySelector(`[name="${name}"][value="${value}"]`);
+                            if (radio) radio.checked = true;
+                        } else {
+                            field.value = value;
+                        }
+                    }
+                });
+                return form;
+            },
+
+            /**
+             * Simple validation
+             */
+            validate: function (selector, rules = {}) {
+                const form = Aegis.get(selector);
+                if (!form) return { valid: false, errors: ['Form not found'] };
+                const errors = [];
+                Object.entries(rules).forEach(([name, rule]) => {
+                    const field = form.querySelector(`[name="${name}"]`);
+                    const value = field?.value || '';
+                    if (rule.required && !value.trim()) {
+                        errors.push(`${name} is required`);
+                    }
+                    if (rule.minLength && value.length < rule.minLength) {
+                        errors.push(`${name} must be at least ${rule.minLength} characters`);
+                    }
+                    if (rule.pattern && !rule.pattern.test(value)) {
+                        errors.push(`${name} is invalid`);
+                    }
+                    if (rule.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+                        errors.push(`${name} must be a valid email`);
+                    }
+                });
+                return { valid: errors.length === 0, errors };
+            }
+        },
+
+        // ==================== HTTP/Fetch Utilities ====================
+
+        http: {
+            /**
+             * GET request
+             */
+            get: async function (url, options = {}) {
+                const response = await fetch(url, { method: 'GET', ...options });
+                return options.raw ? response : response.json();
+            },
+
+            /**
+             * POST request
+             */
+            post: async function (url, data, options = {}) {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', ...options.headers },
+                    body: JSON.stringify(data),
+                    ...options
+                });
+                return options.raw ? response : response.json();
+            },
+
+            /**
+             * PUT request
+             */
+            put: async function (url, data, options = {}) {
+                const response = await fetch(url, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', ...options.headers },
+                    body: JSON.stringify(data),
+                    ...options
+                });
+                return options.raw ? response : response.json();
+            },
+
+            /**
+             * DELETE request
+             */
+            delete: async function (url, options = {}) {
+                const response = await fetch(url, { method: 'DELETE', ...options });
+                return options.raw ? response : response.json();
+            }
+        },
+
+        // ==================== Cookie Utilities ====================
+
+        cookie: {
+            get: function (name) {
+                const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+                return match ? decodeURIComponent(match[2]) : null;
+            },
+            set: function (name, value, days = 365, path = '/') {
+                const expires = new Date(Date.now() + days * 864e5).toUTCString();
+                document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=${path}`;
+            },
+            remove: function (name, path = '/') {
+                document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=${path}`;
+            }
+        },
+
+        // ==================== URL Utilities ====================
+
+        url: {
+            /**
+             * Get query parameters as object
+             */
+            params: function (url = window.location.href) {
+                const params = {};
+                new URL(url).searchParams.forEach((v, k) => params[k] = v);
+                return params;
+            },
+
+            /**
+             * Get single parameter
+             */
+            param: function (name, url = window.location.href) {
+                return new URL(url).searchParams.get(name);
+            },
+
+            /**
+             * Build URL with params
+             */
+            build: function (base, params = {}) {
+                const url = new URL(base, window.location.origin);
+                Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+                return url.toString();
+            },
+
+            /**
+             * Get current path
+             */
+            path: function () {
+                return window.location.pathname;
+            },
+
+            /**
+             * Get hash without #
+             */
+            hash: function () {
+                return window.location.hash.slice(1);
+            }
+        },
+
+        // ==================== String Utilities ====================
+
+        string: {
+            capitalize: function (str) {
+                return str.charAt(0).toUpperCase() + str.slice(1);
+            },
+
+            titleCase: function (str) {
+                return str.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+            },
+
+            camelCase: function (str) {
+                return str.replace(/[-_\s]+(.)?/g, (_, c) => c ? c.toUpperCase() : '');
+            },
+
+            kebabCase: function (str) {
+                return str.replace(/([a-z])([A-Z])/g, '$1-$2').replace(/[\s_]+/g, '-').toLowerCase();
+            },
+
+            snakeCase: function (str) {
+                return str.replace(/([a-z])([A-Z])/g, '$1_$2').replace(/[\s-]+/g, '_').toLowerCase();
+            },
+
+            slugify: function (str) {
+                return str.toLowerCase().trim()
+                    .replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-').replace(/^-+|-+$/g, '');
+            },
+
+            truncate: function (str, length, suffix = '...') {
+                return str.length > length ? str.slice(0, length) + suffix : str;
+            },
+
+            pad: function (str, length, char = ' ', end = false) {
+                str = String(str);
+                return end ? str.padEnd(length, char) : str.padStart(length, char);
+            },
+
+            reverse: function (str) {
+                return str.split('').reverse().join('');
+            },
+
+            count: function (str, search) {
+                return (str.match(new RegExp(search, 'g')) || []).length;
+            },
+
+            between: function (str, start, end) {
+                const s = str.indexOf(start) + start.length;
+                const e = str.indexOf(end, s);
+                return s > start.length - 1 && e > -1 ? str.slice(s, e) : '';
+            },
+
+            template: function (str, data) {
+                return str.replace(/\{\{(\w+)\}\}/g, (_, key) => data[key] ?? '');
+            }
+        },
+
+        // ==================== Array Utilities ====================
+
+        array: {
+            unique: function (arr) {
+                return [...new Set(arr)];
+            },
+
+            shuffle: function (arr) {
+                const a = [...arr];
+                for (let i = a.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [a[i], a[j]] = [a[j], a[i]];
+                }
+                return a;
+            },
+
+            chunk: function (arr, size) {
+                const chunks = [];
+                for (let i = 0; i < arr.length; i += size) {
+                    chunks.push(arr.slice(i, i + size));
+                }
+                return chunks;
+            },
+
+            flatten: function (arr, depth = Infinity) {
+                return arr.flat(depth);
+            },
+
+            compact: function (arr) {
+                return arr.filter(Boolean);
+            },
+
+            first: function (arr, n = 1) {
+                return n === 1 ? arr[0] : arr.slice(0, n);
+            },
+
+            last: function (arr, n = 1) {
+                return n === 1 ? arr[arr.length - 1] : arr.slice(-n);
+            },
+
+            sample: function (arr) {
+                return arr[Math.floor(Math.random() * arr.length)];
+            },
+
+            groupBy: function (arr, key) {
+                return arr.reduce((groups, item) => {
+                    const k = typeof key === 'function' ? key(item) : item[key];
+                    (groups[k] = groups[k] || []).push(item);
+                    return groups;
+                }, {});
+            },
+
+            sortBy: function (arr, key, desc = false) {
+                return [...arr].sort((a, b) => {
+                    const va = typeof key === 'function' ? key(a) : a[key];
+                    const vb = typeof key === 'function' ? key(b) : b[key];
+                    return desc ? (vb > va ? 1 : -1) : (va > vb ? 1 : -1);
+                });
+            },
+
+            diff: function (arr1, arr2) {
+                return arr1.filter(x => !arr2.includes(x));
+            },
+
+            intersect: function (arr1, arr2) {
+                return arr1.filter(x => arr2.includes(x));
+            },
+
+            range: function (start, end, step = 1) {
+                const arr = [];
+                for (let i = start; i <= end; i += step) arr.push(i);
+                return arr;
+            }
+        },
+
+        // ==================== Object Utilities ====================
+
+        object: {
+            clone: function (obj) {
+                return JSON.parse(JSON.stringify(obj));
+            },
+
+            merge: function (...objects) {
+                return objects.reduce((acc, obj) => ({ ...acc, ...obj }), {});
+            },
+
+            isEmpty: function (obj) {
+                return Object.keys(obj).length === 0;
+            },
+
+            pick: function (obj, keys) {
+                return keys.reduce((acc, key) => {
+                    if (key in obj) acc[key] = obj[key];
+                    return acc;
+                }, {});
+            },
+
+            omit: function (obj, keys) {
+                return Object.fromEntries(Object.entries(obj).filter(([k]) => !keys.includes(k)));
+            },
+
+            keys: function (obj) {
+                return Object.keys(obj);
+            },
+
+            values: function (obj) {
+                return Object.values(obj);
+            },
+
+            entries: function (obj) {
+                return Object.entries(obj);
+            },
+
+            fromEntries: function (entries) {
+                return Object.fromEntries(entries);
+            },
+
+            get: function (obj, path, fallback = undefined) {
+                return path.split('.').reduce((o, k) => (o || {})[k], obj) ?? fallback;
+            },
+
+            set: function (obj, path, value) {
+                const keys = path.split('.');
+                const last = keys.pop();
+                const target = keys.reduce((o, k) => (o[k] = o[k] || {}), obj);
+                target[last] = value;
+                return obj;
+            }
+        },
+
+        // ==================== Date Utilities ====================
+
+        date: {
+            now: function () {
+                return new Date();
+            },
+
+            format: function (date, format = 'YYYY-MM-DD') {
+                const d = new Date(date);
+                const pad = n => String(n).padStart(2, '0');
+                return format
+                    .replace('YYYY', d.getFullYear())
+                    .replace('MM', pad(d.getMonth() + 1))
+                    .replace('DD', pad(d.getDate()))
+                    .replace('HH', pad(d.getHours()))
+                    .replace('mm', pad(d.getMinutes()))
+                    .replace('ss', pad(d.getSeconds()));
+            },
+
+            ago: function (date) {
+                const seconds = Math.floor((Date.now() - new Date(date)) / 1000);
+                const intervals = [
+                    [31536000, 'year'], [2592000, 'month'], [86400, 'day'],
+                    [3600, 'hour'], [60, 'minute'], [1, 'second']
+                ];
+                for (const [secs, unit] of intervals) {
+                    const n = Math.floor(seconds / secs);
+                    if (n >= 1) return `${n} ${unit}${n > 1 ? 's' : ''} ago`;
+                }
+                return 'just now';
+            },
+
+            isToday: function (date) {
+                const d = new Date(date);
+                const today = new Date();
+                return d.toDateString() === today.toDateString();
+            },
+
+            isYesterday: function (date) {
+                const d = new Date(date);
+                const yesterday = new Date(Date.now() - 864e5);
+                return d.toDateString() === yesterday.toDateString();
+            },
+
+            add: function (date, amount, unit = 'day') {
+                const d = new Date(date);
+                const ms = { second: 1000, minute: 60000, hour: 3600000, day: 864e5 };
+                return new Date(d.getTime() + amount * (ms[unit] || ms.day));
+            },
+
+            diff: function (date1, date2, unit = 'day') {
+                const ms = Math.abs(new Date(date1) - new Date(date2));
+                const divisors = { second: 1000, minute: 60000, hour: 3600000, day: 864e5 };
+                return Math.floor(ms / (divisors[unit] || divisors.day));
+            }
+        },
+
+        // ==================== Number Utilities ====================
+
+        number: {
+            format: function (num, decimals = 0, locale = 'pt-BR') {
+                return new Intl.NumberFormat(locale, {
+                    minimumFractionDigits: decimals,
+                    maximumFractionDigits: decimals
+                }).format(num);
+            },
+
+            currency: function (num, currency = 'BRL', locale = 'pt-BR') {
+                return new Intl.NumberFormat(locale, {
+                    style: 'currency',
+                    currency
+                }).format(num);
+            },
+
+            clamp: function (num, min, max) {
+                return Math.min(Math.max(num, min), max);
+            },
+
+            random: function (min = 0, max = 100) {
+                return Math.floor(Math.random() * (max - min + 1)) + min;
+            },
+
+            percent: function (value, total) {
+                return total ? Math.round((value / total) * 100) : 0;
+            },
+
+            bytes: function (bytes, decimals = 2) {
+                if (bytes === 0) return '0 B';
+                const k = 1024;
+                const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(decimals)) + ' ' + sizes[i];
+            },
+
+            ordinal: function (n) {
+                const s = ['th', 'st', 'nd', 'rd'];
+                const v = n % 100;
+                return n + (s[(v - 20) % 10] || s[v] || s[0]);
+            }
+        },
+
+        // ==================== Clipboard Utilities ====================
+
+        clipboard: {
+            copy: async function (text) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    return true;
+                } catch (e) {
+                    // Fallback
+                    const ta = document.createElement('textarea');
+                    ta.value = text;
+                    ta.style.position = 'fixed';
+                    ta.style.opacity = '0';
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                    return true;
+                }
+            },
+
+            paste: async function () {
+                try {
+                    return await navigator.clipboard.readText();
+                } catch (e) {
+                    return null;
+                }
+            }
+        },
+
+        // ==================== Toast/Notification ====================
+
+        toast: function (message, options = {}) {
+            const { duration = 3000, type = 'info', position = 'bottom-right' } = options;
+
+            // Create container if not exists
+            let container = document.getElementById('aegis-toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'aegis-toast-container';
+                container.style.cssText = `
+                    position: fixed; z-index: 99999; display: flex; flex-direction: column; gap: 10px;
+                    ${position.includes('top') ? 'top: 20px' : 'bottom: 20px'};
+                    ${position.includes('left') ? 'left: 20px' : 'right: 20px'};
+                `;
+                document.body.appendChild(container);
+            }
+
+            const colors = { info: '#3498db', success: '#2ecc71', warning: '#f39c12', error: '#e74c3c' };
+            const icons = { info: 'ℹ️', success: '✅', warning: '⚠️', error: '❌' };
+
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                background: ${colors[type] || colors.info}; color: white; padding: 12px 20px;
+                border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                font-family: -apple-system, sans-serif; font-size: 14px;
+                display: flex; align-items: center; gap: 10px;
+                animation: aegisToastIn 0.3s ease;
+                max-width: 350px;
+            `;
+            toast.innerHTML = `<span>${icons[type] || ''}</span><span>${message}</span>`;
+            container.appendChild(toast);
+
+            // Add animation styles if not exist
+            if (!document.getElementById('aegis-toast-styles')) {
+                const style = document.createElement('style');
+                style.id = 'aegis-toast-styles';
+                style.textContent = `
+                    @keyframes aegisToastIn { from { opacity: 0; transform: translateX(100px); } }
+                    @keyframes aegisToastOut { to { opacity: 0; transform: translateX(100px); } }
+                `;
+                document.head.appendChild(style);
+            }
+
+            setTimeout(() => {
+                toast.style.animation = 'aegisToastOut 0.3s ease forwards';
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+
+            return toast;
+        },
+
+        // ==================== Random Utilities ====================
+
+        random: {
+            int: function (min = 0, max = 100) {
+                return Math.floor(Math.random() * (max - min + 1)) + min;
+            },
+
+            float: function (min = 0, max = 1, decimals = 2) {
+                return parseFloat((Math.random() * (max - min) + min).toFixed(decimals));
+            },
+
+            bool: function (probability = 0.5) {
+                return Math.random() < probability;
+            },
+
+            pick: function (arr) {
+                return arr[Math.floor(Math.random() * arr.length)];
+            },
+
+            color: function () {
+                return '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+            },
+
+            uuid: function () {
+                return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+                    const r = Math.random() * 16 | 0;
+                    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+                });
+            }
+        },
+
+        // ==================== Validation Utilities ====================
+
+        is: {
+            email: function (str) {
+                return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(str);
+            },
+            url: function (str) {
+                try { new URL(str); return true; } catch { return false; }
+            },
+            number: function (val) {
+                return typeof val === 'number' && !isNaN(val);
+            },
+            string: function (val) {
+                return typeof val === 'string';
+            },
+            array: function (val) {
+                return Array.isArray(val);
+            },
+            object: function (val) {
+                return val !== null && typeof val === 'object' && !Array.isArray(val);
+            },
+            function: function (val) {
+                return typeof val === 'function';
+            },
+            empty: function (val) {
+                if (val == null) return true;
+                if (Array.isArray(val) || typeof val === 'string') return val.length === 0;
+                if (typeof val === 'object') return Object.keys(val).length === 0;
+                return false;
+            },
+            mobile: function () {
+                return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            }
+        },
+
+        // ==================== Log Utilities ====================
+
+        log: {
+            info: function (...args) {
+                console.log('%c[INFO]', 'color: #3498db; font-weight: bold;', ...args);
+            },
+            success: function (...args) {
+                console.log('%c[SUCCESS]', 'color: #2ecc71; font-weight: bold;', ...args);
+            },
+            warn: function (...args) {
+                console.log('%c[WARN]', 'color: #f39c12; font-weight: bold;', ...args);
+            },
+            error: function (...args) {
+                console.log('%c[ERROR]', 'color: #e74c3c; font-weight: bold;', ...args);
+            },
+            debug: function (...args) {
+                console.log('%c[DEBUG]', 'color: #9b59b6; font-weight: bold;', ...args);
+            },
+            table: function (data) {
+                console.table(data);
+            }
         }
     };
 
@@ -1005,4 +1648,3 @@
     console.log('%c⚡ Aegis v' + Aegis.version + ' loaded', 'color: #00ff88; font-weight: bold;');
 
 })();
-
