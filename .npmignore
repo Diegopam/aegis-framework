@@ -1,0 +1,21 @@
+# Examples (not for npm)
+ exemplo/
+
+# Apps (not for npm)
+file-manager/
+test-app/
+
+# Build artifacts
+dist/
+*.AppImage
+*.AppDir/
+
+# Python cache
+__pycache__/
+*.pyc
+.venv/
+
+# Dev files
+.git/
+.gitignore
+.npmrc

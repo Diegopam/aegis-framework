@@ -609,7 +609,7 @@
         /**
          * Version of Aegis
          */
-        version: '0.1.0',
+        version: '0.1.4',
 
         /**
          * Check if running in Aegis environment
@@ -619,10 +619,295 @@
         }
     };
 
+    // ==================== Aegis Utility API ($ helpers) ====================
+
+    /**
+     * Select single element (like jQuery $)
+     * @param {string} selector - CSS selector
+     * @returns {Element|null}
+     */
+    function $(selector) {
+        if (selector.startsWith('#') && !selector.includes(' ') && !selector.includes('.')) {
+            return document.getElementById(selector.slice(1));
+        }
+        return document.querySelector(selector);
+    }
+
+    /**
+     * Select all elements
+     * @param {string} selector - CSS selector
+     * @returns {NodeList}
+     */
+    function $$(selector) {
+        return document.querySelectorAll(selector);
+    }
+
+    /**
+     * Utility methods attached to $
+     */
+    $.on = function (selector, events, handler, options = {}) {
+        const elements = typeof selector === 'string' ? $$(selector) : [selector];
+        const eventList = events.split(' ');
+        elements.forEach(el => {
+            eventList.forEach(event => {
+                el.addEventListener(event.trim(), handler, options);
+            });
+        });
+        return elements;
+    };
+
+    $.once = function (selector, events, handler) {
+        return $.on(selector, events, handler, { once: true });
+    };
+
+    $.off = function (selector, events, handler) {
+        const elements = typeof selector === 'string' ? $$(selector) : [selector];
+        const eventList = events.split(' ');
+        elements.forEach(el => {
+            eventList.forEach(event => {
+                el.removeEventListener(event.trim(), handler);
+            });
+        });
+        return elements;
+    };
+
+    $.create = function (tag, options = {}) {
+        const el = document.createElement(tag);
+        if (options.id) el.id = options.id;
+        if (options.class) el.className = options.class;
+        if (options.html) el.innerHTML = options.html;
+        if (options.text) el.textContent = options.text;
+        if (options.attrs) {
+            Object.entries(options.attrs).forEach(([key, value]) => {
+                el.setAttribute(key, value);
+            });
+        }
+        if (options.style) {
+            Object.assign(el.style, options.style);
+        }
+        if (options.data) {
+            Object.entries(options.data).forEach(([key, value]) => {
+                el.dataset[key] = value;
+            });
+        }
+        if (options.on) {
+            Object.entries(options.on).forEach(([event, handler]) => {
+                el.addEventListener(event, handler);
+            });
+        }
+        if (options.parent) {
+            const parent = typeof options.parent === 'string' ? $(options.parent) : options.parent;
+            if (parent) parent.appendChild(el);
+        }
+        return el;
+    };
+
+    $.addClass = function (selector, ...classes) {
+        const el = typeof selector === 'string' ? $(selector) : selector;
+        if (el) el.classList.add(...classes);
+        return el;
+    };
+
+    $.removeClass = function (selector, ...classes) {
+        const el = typeof selector === 'string' ? $(selector) : selector;
+        if (el) el.classList.remove(...classes);
+        return el;
+    };
+
+    $.toggleClass = function (selector, className, force) {
+        const el = typeof selector === 'string' ? $(selector) : selector;
+        if (el) el.classList.toggle(className, force);
+        return el;
+    };
+
+    $.hasClass = function (selector, className) {
+        const el = typeof selector === 'string' ? $(selector) : selector;
+        return el ? el.classList.contains(className) : false;
+    };
+
+    $.css = function (selector, styles) {
+        const el = typeof selector === 'string' ? $(selector) : selector;
+        if (el && styles) Object.assign(el.style, styles);
+        return el;
+    };
+
+    $.hide = function (selector) {
+        const el = typeof selector === 'string' ? $(selector) : selector;
+        if (el) el.style.display = 'none';
+        return el;
+    };
+
+    $.show = function (selector, display = 'block') {
+        const el = typeof selector === 'string' ? $(selector) : selector;
+        if (el) el.style.display = display;
+        return el;
+    };
+
+    $.toggle = function (selector) {
+        const el = typeof selector === 'string' ? $(selector) : selector;
+        if (el) el.style.display = el.style.display === 'none' ? '' : 'none';
+        return el;
+    };
+
+    $.attr = function (selector, name, value) {
+        const el = typeof selector === 'string' ? $(selector) : selector;
+        if (!el) return null;
+        if (value === undefined) return el.getAttribute(name);
+        el.setAttribute(name, value);
+        return el;
+    };
+
+    $.data = function (selector, key, value) {
+        const el = typeof selector === 'string' ? $(selector) : selector;
+        if (!el) return null;
+        if (value === undefined) return el.dataset[key];
+        el.dataset[key] = value;
+        return el;
+    };
+
+    $.html = function (selector, content) {
+        const el = typeof selector === 'string' ? $(selector) : selector;
+        if (!el) return null;
+        if (content === undefined) return el.innerHTML;
+        el.innerHTML = content;
+        return el;
+    };
+
+    $.text = function (selector, content) {
+        const el = typeof selector === 'string' ? $(selector) : selector;
+        if (!el) return null;
+        if (content === undefined) return el.textContent;
+        el.textContent = content;
+        return el;
+    };
+
+    $.each = function (selector, callback) {
+        const elements = typeof selector === 'string' ? $$(selector) : selector;
+        elements.forEach((el, i) => callback(el, i));
+        return elements;
+    };
+
+    $.remove = function (selector) {
+        const el = typeof selector === 'string' ? $(selector) : selector;
+        if (el && el.parentNode) el.parentNode.removeChild(el);
+        return el;
+    };
+
+    $.append = function (parent, child) {
+        const p = typeof parent === 'string' ? $(parent) : parent;
+        const c = typeof child === 'string' ? $(child) : child;
+        if (p && c) p.appendChild(c);
+        return p;
+    };
+
+    $.prepend = function (parent, child) {
+        const p = typeof parent === 'string' ? $(parent) : parent;
+        const c = typeof child === 'string' ? $(child) : child;
+        if (p && c) p.insertBefore(c, p.firstChild);
+        return p;
+    };
+
+    // JSON Utilities
+    $.parseJSON = function (str, fallback = null) {
+        try {
+            return JSON.parse(str);
+        } catch (e) {
+            return fallback;
+        }
+    };
+
+    $.stringify = function (obj, pretty = false) {
+        return JSON.stringify(obj, null, pretty ? 2 : 0);
+    };
+
+    // LocalStorage Utilities
+    $.storage = {
+        get: function (key, fallback = null) {
+            try {
+                const value = localStorage.getItem(key);
+                return value ? JSON.parse(value) : fallback;
+            } catch (e) {
+                return fallback;
+            }
+        },
+        set: function (key, value) {
+            try {
+                localStorage.setItem(key, JSON.stringify(value));
+                return true;
+            } catch (e) {
+                return false;
+            }
+        },
+        remove: function (key) {
+            localStorage.removeItem(key);
+        },
+        clear: function () {
+            localStorage.clear();
+        }
+    };
+
+    // Animation helpers
+    $.fadeIn = function (selector, duration = 300) {
+        const el = typeof selector === 'string' ? $(selector) : selector;
+        if (!el) return;
+        el.style.opacity = '0';
+        el.style.display = '';
+        el.style.transition = `opacity ${duration}ms ease`;
+        requestAnimationFrame(() => {
+            el.style.opacity = '1';
+        });
+        return el;
+    };
+
+    $.fadeOut = function (selector, duration = 300) {
+        const el = typeof selector === 'string' ? $(selector) : selector;
+        if (!el) return;
+        el.style.transition = `opacity ${duration}ms ease`;
+        el.style.opacity = '0';
+        setTimeout(() => {
+            el.style.display = 'none';
+        }, duration);
+        return el;
+    };
+
+    // Ready handler (like jQuery $(document).ready)
+    $.ready = function (callback) {
+        if (document.readyState !== 'loading') {
+            callback();
+        } else {
+            document.addEventListener('DOMContentLoaded', callback);
+        }
+    };
+
+    // Debounce utility
+    $.debounce = function (func, wait) {
+        let timeout;
+        return function (...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), wait);
+        };
+    };
+
+    // Throttle utility
+    $.throttle = function (func, limit) {
+        let inThrottle;
+        return function (...args) {
+            if (!inThrottle) {
+                func.apply(this, args);
+                inThrottle = true;
+                setTimeout(() => inThrottle = false, limit);
+            }
+        };
+    };
+
     // ==================== Expose to Window ====================
 
     // Make Aegis available globally
     window.Aegis = Aegis;
+
+    // Expose $ and $$ globally (optional jQuery-like syntax)
+    window.$ = window.$ || $;
+    window.$$ = window.$$ || $$;
 
     // Also expose as module if applicable
     if (typeof module !== 'undefined' && module.exports) {

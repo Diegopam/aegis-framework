@@ -1,1 +1,22 @@
+# Secrets
 .npmrc
+
+# Examples (not for distribution)
+ exemplo/
+
+# Build artifacts
+dist/
+*.AppImage
+*.AppDir/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# IDE
+.vscode/
+.idea/
+
+# System
+.DS_Store
